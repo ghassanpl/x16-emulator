@@ -2,9 +2,10 @@
   <img src="./.gh/logo.png" />
 </p>
 
-[![Build Status](https://travis-ci.org/commanderx16/x16-emulator.svg?branch=master)](https://travis-ci.org/commanderx16/x16-emulator)
-[![Release](https://img.shields.io/github/v/release/commanderx16/x16-emulator)](https://github.com/commanderx16/x16-emulator/releases)
-[![License: BSD-Clause](https://img.shields.io/github/license/commanderx16/x16-emulator)](./LICENSE)
+[ghassanpl fork](https://github.com/ghassanpl/x16-emulator/): [![Build Status](https://travis-ci.org/ghassanpl/x16-emulator.svg?branch=master)](https://travis-ci.org/ghassanpl/x16-emulator) 
+[![Release](https://img.shields.io/github/v/release/ghassanpl/x16-emulator)](https://github.com/ghassanpl/x16-emulator/releases)
+
+main repo: [![License: BSD-Clause](https://img.shields.io/github/license/commanderx16/x16-emulator)](./LICENSE)
 [![Contributors](https://img.shields.io/github/contributors/commanderx16/x16-emulator.svg)](https://github.com/commanderx16/x16-emulator/graphs/contributors)
 
 This is an emulator for the Commander X16 computer system. It only depends on SDL2 and should compile on all modern operating systems.
