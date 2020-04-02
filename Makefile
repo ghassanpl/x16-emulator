@@ -11,7 +11,7 @@ else
 endif
 
 CFLAGS=-std=c99 -O3 -Wall -Werror -g $(shell $(SDL2CONFIG) --cflags) -Iextern/include -Iextern/src
-LDFLAGS=$(shell $(SDL2CONFIG) --libs) -llua5.3 -lm
+LDFLAGS=$(shell $(SDL2CONFIG) --libs) -lm
 
 
 ifdef TRACE
@@ -21,7 +21,7 @@ endif
 OUTPUT=x16emu
 
 ifeq ($(MAC_STATIC),1)
-	LDFLAGS=/usr/local/lib/libSDL2.a -llua5.3 -lm -liconv -Wl,-framework,CoreAudio -Wl,-framework,AudioToolbox -Wl,-framework,ForceFeedback -lobjc -Wl,-framework,CoreVideo -Wl,-framework,Cocoa -Wl,-framework,Carbon -Wl,-framework,IOKit -Wl,-weak_framework,QuartzCore -Wl,-weak_framework,Metal
+	LDFLAGS=/usr/local/lib/libSDL2.a -lm -liconv -Wl,-framework,CoreAudio -Wl,-framework,AudioToolbox -Wl,-framework,ForceFeedback -lobjc -Wl,-framework,CoreVideo -Wl,-framework,Cocoa -Wl,-framework,Carbon -Wl,-framework,IOKit -Wl,-weak_framework,QuartzCore -Wl,-weak_framework,Metal
 endif
 
 ifeq ($(CROSS_COMPILE_WINDOWS),1)

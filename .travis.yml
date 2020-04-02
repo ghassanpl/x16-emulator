@@ -10,7 +10,6 @@ matrix:
         apt:
           packages:
             - libsdl2-dev
-            - liblua5.3-dev
       compiler: gcc
       script: make clean all
     - name: macOS
@@ -49,7 +48,6 @@ matrix:
         apt:
           packages:
             - libsdl2-dev
-            - liblua5.3-dev
       services:
         - docker
       before_install:

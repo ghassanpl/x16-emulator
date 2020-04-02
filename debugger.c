@@ -710,8 +710,9 @@ static luaL_Reg DEBUGLuaFunctions[] = {
 	{"r", l_setreg}, {"setreg", l_setreg},
 	{"dump", l_dump},
 	{"hardreset", l_hardreset},
-    {"keys", l_keys},
-    {"emu", l_emu},
+	{"keys", l_keys},
+	{"emu", l_emu},
+	{0,0}
 };
 /*
 GENERAL TODO:
@@ -723,14 +724,14 @@ LUA TODO:
 - getreg(reg)
 - getbank()
 - (v)peek(addr), (v)poke(addr, val)
-  - read6502(), real_read6502(), write6502
-  - video_space_read(), video_space_write(), video_read(), video_write()
+	- read6502(), real_read6502(), write6502
+	- video_space_read(), video_space_write(), video_read(), video_write()
 - (v)memset(...), (v)memcpy(...)
-  - video_space_read_range()
+	- video_space_read_range()
 - viaget(via, reg) - via2_read()
 - viaset(via, reg, val) - via2_write()
 - dasm(addr)
-  - disasm(uint16_t pc, uint8_t *RAM, char *line, unsigned int max_line, bool debugOn, uint8_t bank) {
+	- disasm(uint16_t pc, uint8_t *RAM, char *line, unsigned int max_line, bool debugOn, uint8_t bank) {
 - getkeymaps() -> {}
 - getkeymap() -> string
 - setkeymap(keymap)
@@ -743,21 +744,21 @@ LUA TODO:
 
 - ps2 buffer
 - mouse and joystick info
-  - get_joystick_state()
+	- get_joystick_state()
 - keymap?
 - sd card, sound
 - addwatch(name, addr) - display contents of specific memory cells on screen when running
 - calling lua functions on breakpoints and events
-  - events:
-	- vblank
-	- hblank
-	- data breakpoint
-	- code breakpoint
-	- every n instructions (instruction_counter ?)
-	- key press
-	- mouse click
-	- I/O state
-	- timer
+	- events:
+		- vblank
+		- hblank
+		- data breakpoint
+		- code breakpoint
+		- every n instructions (instruction_counter ?)
+		- key press
+		- mouse click
+		- I/O state
+		- timer
 */
 
 // *******************************************************************************************
