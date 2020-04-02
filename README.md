@@ -2,7 +2,7 @@
   <img src="./.gh/logo.png" />
 </p>
 
-[ghassanpl fork](https://github.com/ghassanpl/x16-emulator/): [![Build Status](https://travis-ci.org/ghassanpl/x16-emulator.svg?branch=master)](https://travis-ci.org/ghassanpl/x16-emulator) 
+[ghassanpl fork](https://github.com/ghassanpl/x16-emulator/): [![Build Status](https://travis-ci.org/ghassanpl/x16-emulator.svg?branch=master)](https://travis-ci.org/ghassanpl/x16-emulator)
 [![Release](https://img.shields.io/github/v/release/ghassanpl/x16-emulator)](https://github.com/ghassanpl/x16-emulator/releases)
 
 main repo: [![License: BSD-Clause](https://img.shields.io/github/license/commanderx16/x16-emulator)](./LICENSE)
