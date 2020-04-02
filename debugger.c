@@ -13,6 +13,9 @@
 #include <stdio.h>
 #include <inttypes.h>
 #include <SDL.h>
+#include <lua.h>
+#include <lualib.h>
+#include <lauxlib.h>
 #include "glue.h"
 #include "disasm.h"
 #include "memory.h"
@@ -22,6 +25,7 @@
 #include "rendertext.h"
 
 static void DEBUGHandleKeyEvent(SDL_Keycode key,int isShift);
+static void DEBUGHandleTextEvent(const char *text);
 
 static void DEBUGNumber(int x,int y,int n,int w, SDL_Color colour);
 static void DEBUGAddress(int x, int y, int bank, int addr, SDL_Color colour);
@@ -80,7 +84,7 @@ static void DEBUGExecCmd();
 #define DBGSCANKEY_SHOW	SDL_SCANCODE_TAB 						// Show screen key.
 																// *** MUST BE SCAN CODES ***
 
-enum DBG_CMD { CMD_DUMP_MEM='m', CMD_DISASM='d', CMD_SET_BANK='b', CMD_SET_REGISTER='r' };
+enum DBG_CMD { CMD_DUMP_MEM='m', CMD_DISASM='d', CMD_SET_BANK='b', CMD_SET_REGISTER='r', CMD_LUA='l' };
 
 // RGB colours
 const SDL_Color col_bkgnd= {0, 0, 0, 255};
@@ -102,6 +106,9 @@ int stepBreakPoint = -1;										// Single step break.
 char cmdLine[64]= "";											// command line buffer
 int currentPosInLine= 0;										// cursor position in the buffer (NOT USED _YET_)
 int currentLineLen= 0;											// command line buffer length
+
+lua_State *luaState = 0;
+int        luaCmds  = false;
 
 //
 //		This flag controls
@@ -156,6 +163,9 @@ int  DEBUGGetCurrentStatus(void) {
 										SDL_GetModState() & (KMOD_LSHIFT|KMOD_RSHIFT));
 					break;
 
+				case SDL_TEXTINPUT:
+					DEBUGHandleTextEvent(event.text.text);
+					break;
 			}
 		}
 	}
@@ -169,6 +179,9 @@ int  DEBUGGetCurrentStatus(void) {
 	return 0;													// Run wild, run free.
 }
 
+
+extern luaL_Reg DEBUGLuaFunctions[];
+
 // *******************************************************************************************
 //
 //								Setup fonts and co
@@ -177,6 +190,15 @@ int  DEBUGGetCurrentStatus(void) {
 void DEBUGInitUI(SDL_Renderer *pRenderer) {
 		DEBUGInitChars(pRenderer);
 		dbgRenderer = pRenderer;				// Save renderer.
+		luaState    = luaL_newstate();
+		if (!luaState) {
+			printf("Could not create lua state\n");
+			return;
+		}
+		luaL_openlibs(luaState);
+		lua_pushglobaltable(luaState);
+		luaL_setfuncs(luaState, DEBUGLuaFunctions, 0);
+		lua_pop(luaState, 1);
 }
 
 // *******************************************************************************************
@@ -185,6 +207,8 @@ void DEBUGInitUI(SDL_Renderer *pRenderer) {
 //
 // *******************************************************************************************
 void DEBUGFreeUI() {
+	lua_close(luaState);
+	luaState = 0;
 }
 
 // *******************************************************************************************
@@ -278,37 +302,47 @@ static void DEBUGHandleKeyEvent(SDL_Keycode key,int isShift) {
 
 }
 
+static void DEBUGHandleTextEvent(const char *text) {
+	// TODO: Ignore UTF-8 characters > 0x7F
+	strcat_s(cmdLine, sizeof(cmdLine), text);
+	currentPosInLine += (int)strlen(text);
+	if (currentPosInLine > currentLineLen) {
+		currentLineLen = currentPosInLine;
+	}
+}
+
 char kNUM_KEYPAD_CHARS[10] = {'1','2','3','4','5','6','7','8','9','0'};
 
 static bool DEBUGBuildCmdLine(SDL_Keycode key) {
 	// right now, let's have a rudimentary input: only backspace to delete last char
 	// later, I want a real input line with delete, backspace, left and right cursor
 	// devs like their comfort ;)
-	if(currentLineLen <= sizeof(cmdLine)) {
-		if(
-			(key >= SDLK_SPACE && key <= SDLK_AT)
-			||
-			(key >= SDLK_LEFTBRACKET && key <= SDLK_z)
-			||
-			(key >= SDLK_KP_1 && key <= SDLK_KP_0)
-			) {
-			cmdLine[currentPosInLine++]= key>=SDLK_KP_1 ? kNUM_KEYPAD_CHARS[key-SDLK_KP_1] : key;
-			if(currentPosInLine > currentLineLen) {
-				currentLineLen++;
-			}
-		} else if(key == SDLK_BACKSPACE) {
-			currentPosInLine--;
-			if(currentPosInLine<0) {
-				currentPosInLine= 0;
-			}
-			currentLineLen--;
-			if(currentLineLen<0) {
-				currentLineLen= 0;
-			}
+	if(key == SDLK_BACKSPACE) {
+		currentPosInLine--;
+		if(currentPosInLine<0) {
+			currentPosInLine= 0;
 		}
-		cmdLine[currentLineLen]= 0;
+		currentLineLen--;
+		if(currentLineLen<0) {
+			currentLineLen= 0;
+		}
+		cmdLine[currentLineLen] = 0;
 	}
 	return (key == SDLK_RETURN) || (key == SDLK_KP_ENTER);
+}
+
+static void DEBUGExecLuaCmd(void) {
+	int result = luaL_dostring(luaState, cmdLine);
+
+	if (result != 0) {
+		size_t len = 0;
+		const char *err = lua_tolstring(luaState, -1, &len);
+		printf("Lua Error: %.*s\n", (int)len, err);
+	} else {
+		printf("ok.\n");
+	}
+
+	currentPosInLine = currentLineLen = *cmdLine = 0;
 }
 
 static void DEBUGExecCmd() {
@@ -317,7 +351,12 @@ static void DEBUGExecCmd() {
 	char cmd;
 	char *line= ltrim(cmdLine);
 
-	cmd= *line;
+	if (luaCmds) {
+		DEBUGExecLuaCmd();
+		return;
+	}
+
+	cmd= tolower(*line);
 	if(*line) {
 		line++;
 	}
@@ -373,6 +412,11 @@ static void DEBUGExecCmd() {
 			if(!strcmp(reg, "sp")) {
 				sp= number & 0x00FF;
 			}
+			break;
+
+		case CMD_LUA:
+			printf("Lua mode enabled\n");
+			luaCmds = true;
 			break;
 
 		default:
@@ -558,3 +602,189 @@ static void DEBUGAddress(int x, int y, int bank, int addr, SDL_Color colour) {
 	DEBUGNumber(x+3, y, addr, 4, colour);
 
 }
+
+// *******************************************************************************************
+//
+//									Lua Functions
+//
+// *******************************************************************************************
+
+// Done
+
+static int l_showpc(lua_State *L) {
+	DEBUGHandleKeyEvent(DBGKEY_HOME, false);
+	return 0;
+}
+
+static int l_run(lua_State *L) {
+	DEBUGHandleKeyEvent(DBGKEY_RUN, false);
+	return 0;
+}
+
+static int l_brk(lua_State *L) {
+	DEBUGBreakToDebugger();
+	return 0;
+}
+
+static int l_setbreak(lua_State *L) {
+	lua_Integer pos = luaL_optinteger(L, 1, pc);
+	DEBUGSetBreakPoint((int)pos);
+	return 0;
+}
+
+static int l_status(lua_State *L) {
+	lua_pushinteger(luaState, currentMode);
+	return 1;
+}
+
+static int l_exit(lua_State *L) {
+	printf("Lua mode disabled\n");
+	luaCmds = false;
+	return 0;
+}
+
+static int l_reset(lua_State *L) {
+	DEBUGHandleKeyEvent(DBGKEY_RESET, false);
+	return 0;
+}
+
+static int l_dasm(lua_State *L) {
+	lua_Integer number = luaL_checkinteger(L, 1);
+	int addr = number & 0xFFFF;
+	// Banked Memory, RAM then ROM
+	if (addr >= 0xA000) {
+		currentPCBank = (number & 0xFF0000) >> 16;
+	}
+	currentPC = addr;
+	return 0;
+}
+
+// TODO: This should probably share code with DEBUGExecCmd
+static int l_viewmem(lua_State *L) {
+	lua_Integer number = luaL_checkinteger(L, 1);
+	int addr = number & 0xFFFF;
+	// Banked Memory, RAM then ROM
+	if (addr >= 0xA000) {
+		currentBank = (number & 0xFF0000) >> 16;
+	}
+	currentData = addr;
+	return 0;
+}
+
+static int l_setbank(lua_State *L) {
+	static const char *opts[] = { "rom", "ram", 0 };
+	int reg = luaL_checkoption(L, 1, 0, opts);
+	lua_Integer number = luaL_checkinteger(L, 2);
+	if (reg == 0) {
+		memory_set_rom_bank(number & 0x00FF);
+	} else {
+		memory_set_ram_bank(number & 0x00FF);
+	}
+	return 0;
+}
+
+static int l_setreg(lua_State *L) {
+	static const char *opts[] = {"pc", "a", "x", "y", "sp", 0};
+	int reg = luaL_checkoption(L, 1, 0, opts);
+	lua_Integer number = luaL_checkinteger(L, 2);
+	switch (reg) {
+	case 0: pc = number & 0xFFFF; return 0;
+	case 1: a = number & 0x00FF; return 0;
+	case 2: x = number & 0x00FF; return 0;
+	case 3: y = number & 0x00FF; return 0;
+	case 4: sp = number & 0x00FF; return 0;
+	}
+	return 0;
+}
+
+static int l_dump(lua_State *L) {
+	machine_dump();
+	return 0;
+}
+
+static int l_hardreset(lua_State *L) {
+	machine_reset();
+	return 0;
+}
+
+static int l_keys(lua_State *L) {
+	const char *keys = luaL_checkstring(L, 1);
+	machine_paste(keys);
+	return 0;
+}
+
+static int l_emu(lua_State *L) {
+	lua_Integer reg = luaL_checkinteger(L, 1);
+	lua_Integer value = luaL_optinteger(L, 2, -1);
+	if (value < 0) {
+		lua_pushinteger(L, emu_read(reg & 0xFF, true));
+		return 1;
+	} else {
+		emu_write(reg & 0xFF, value & 0xFF);
+		return 0;
+	}
+}
+
+static luaL_Reg DEBUGLuaFunctions[] = {
+	{"f1", l_showpc}, {"showpc", l_showpc},
+	{"f5", l_run}, {"run", l_run},
+	{"brk", l_brk}, {"break", l_brk},
+	{"f9", l_setbreak}, {"setbreak", l_setbreak},
+	{"status", l_status},
+	{"f2", l_reset}, {"reset", l_reset},
+	{"l", l_exit}, {"exitlua", l_exit},
+	{"d", l_dasm}, {"viewdasm", l_dasm},
+	{"m", l_viewmem}, {"viewmem", l_viewmem},
+	{"b", l_setbank}, {"setbank", l_setbank},
+	{"r", l_setreg}, {"setreg", l_setreg},
+	{"dump", l_dump},
+	{"hardreset", l_hardreset},
+    {"keys", l_keys},
+    {"emu", l_emu},
+};
+/*
+GENERAL TODO:
+- multiple breakpoints
+- data breakpoints
+- custom overlay with custom data (based on lua script, plus watches, etc)
+
+LUA TODO:
+- getreg(reg)
+- getbank()
+- (v)peek(addr), (v)poke(addr, val)
+  - read6502(), real_read6502(), write6502
+  - video_space_read(), video_space_write(), video_read(), video_write()
+- (v)memset(...), (v)memcpy(...)
+  - video_space_read_range()
+- viaget(via, reg) - via2_read()
+- viaset(via, reg, val) - via2_write()
+- dasm(addr)
+  - disasm(uint16_t pc, uint8_t *RAM, char *line, unsigned int max_line, bool debugOn, uint8_t bank) {
+- getkeymaps() -> {}
+- getkeymap() -> string
+- setkeymap(keymap)
+- title(window_title) - video_update_title()
+- dump(filename, cpu, ram_range, vram_range, format)
+- loadmem(filename, start_addr, size, start_file_offs = 0)
+- savemem(filename, start_addr, size, append = false)
+- savescreen(filename)
+- gif(cmd, args)
+
+- ps2 buffer
+- mouse and joystick info
+  - get_joystick_state()
+- keymap?
+- sd card, sound
+- addwatch(name, addr) - display contents of specific memory cells on screen when running
+- calling lua functions on breakpoints and events
+  - events:
+	- vblank
+	- hblank
+	- data breakpoint
+	- code breakpoint
+	- every n instructions (instruction_counter ?)
+	- key press
+	- mouse click
+	- I/O state
+	- timer
+*/
