@@ -50,7 +50,11 @@ HEADERS+=rom_labels.h
 endif
 
 all: $(OBJS) $(HEADERS)
+ifdef EMSCRIPTEN
+	emmake $(MAKE) -C extern/src/lua/ a
+else
 	$(MAKE) -C extern/src/lua/ a
+endif
 	$(CC) -o $(OUTPUT) $(OBJS) extern/src/lua/liblua.a $(LDFLAGS)
 %.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@

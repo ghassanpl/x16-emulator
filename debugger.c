@@ -11,6 +11,7 @@
 
 #include <stdlib.h>
 #include <stdio.h>
+#include <ctype.h>
 #include <inttypes.h>
 #include <SDL.h>
 #include "extern/src/lua/lua.h"
