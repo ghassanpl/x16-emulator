@@ -13,7 +13,6 @@ endif
 CFLAGS=-std=c99 -O3 -Wall -Werror -g $(shell $(SDL2CONFIG) --cflags) -Iextern/include -Iextern/src
 LDFLAGS=$(shell $(SDL2CONFIG) --libs) -lm
 
-
 ifdef TRACE
 	CFLAGS+=-D TRACE
 endif
@@ -50,15 +49,14 @@ ifneq ("$(wildcard ./rom_labels.h)","")
 HEADERS+=rom_labels.h
 endif
 
-
 all: $(OBJS) $(HEADERS)
-	$(CC) -o $(OUTPUT) $(OBJS) $(LDFLAGS)
+	$(MAKE) -C extern/src/lua/ a
+	$(CC) -o $(OUTPUT) $(OBJS) extern/src/lua/liblua.a $(LDFLAGS)
 %.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
 cpu/tables.h cpu/mnemonics.h: cpu/buildtables.py cpu/6502.opcodes cpu/65c02.opcodes
 	cd cpu && python buildtables.py
-
 
 # WebASssembly/emscripten target
 #
@@ -150,3 +148,4 @@ package_linux:
 
 clean:
 	rm -f *.o cpu/*.o extern/src/*.o x16emu x16emu.exe x16emu.js x16emu.wasm x16emu.data x16emu.worker.js x16emu.html x16emu.html.mem
+	rm -f extern/src/lua/*.o extern/src/lua/liblua.a

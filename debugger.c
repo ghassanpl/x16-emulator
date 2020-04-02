@@ -13,9 +13,9 @@
 #include <stdio.h>
 #include <inttypes.h>
 #include <SDL.h>
-#include <lua5.3/lua.h>
-#include <lua5.3/lualib.h>
-#include <lua5.3/lauxlib.h>
+#include "extern/src/lua/lua.h"
+#include "extern/src/lua/lualib.h"
+#include "extern/src/lua/lauxlib.h"
 #include "glue.h"
 #include "disasm.h"
 #include "memory.h"
