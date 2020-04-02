@@ -50,17 +50,20 @@ HEADERS+=rom_labels.h
 endif
 
 all: $(OBJS) $(HEADERS)
-ifdef EMSCRIPTEN
-	emmake $(MAKE) -C extern/src/lua/ a
-else
-	$(MAKE) -C extern/src/lua/ a
-endif
+	$(MAKE) lua
 	$(CC) -o $(OUTPUT) $(OBJS) extern/src/lua/liblua.a $(LDFLAGS)
 %.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
 cpu/tables.h cpu/mnemonics.h: cpu/buildtables.py cpu/6502.opcodes cpu/65c02.opcodes
 	cd cpu && python buildtables.py
+
+lua:
+ifdef EMSCRIPTEN
+	emmake $(MAKE) -C extern/src/lua/ a
+else
+	$(MAKE) -C extern/src/lua/ a
+endif
 
 # WebASssembly/emscripten target
 #
