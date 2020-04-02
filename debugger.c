@@ -13,9 +13,9 @@
 #include <stdio.h>
 #include <inttypes.h>
 #include <SDL.h>
-#include <lua.h>
-#include <lualib.h>
-#include <lauxlib.h>
+#include <lua5.3/lua.h>
+#include <lua5.3/lualib.h>
+#include <lua5.3/lauxlib.h>
 #include "glue.h"
 #include "disasm.h"
 #include "memory.h"
@@ -179,38 +179,6 @@ int  DEBUGGetCurrentStatus(void) {
 	return 0;													// Run wild, run free.
 }
 
-
-extern luaL_Reg DEBUGLuaFunctions[];
-
-// *******************************************************************************************
-//
-//								Setup fonts and co
-//
-// *******************************************************************************************
-void DEBUGInitUI(SDL_Renderer *pRenderer) {
-		DEBUGInitChars(pRenderer);
-		dbgRenderer = pRenderer;				// Save renderer.
-		luaState    = luaL_newstate();
-		if (!luaState) {
-			printf("Could not create lua state\n");
-			return;
-		}
-		luaL_openlibs(luaState);
-		lua_pushglobaltable(luaState);
-		luaL_setfuncs(luaState, DEBUGLuaFunctions, 0);
-		lua_pop(luaState, 1);
-}
-
-// *******************************************************************************************
-//
-//								Setup fonts and co
-//
-// *******************************************************************************************
-void DEBUGFreeUI() {
-	lua_close(luaState);
-	luaState = 0;
-}
-
 // *******************************************************************************************
 //
 //								Set a new breakpoint address. -1 to disable.
@@ -304,10 +272,13 @@ static void DEBUGHandleKeyEvent(SDL_Keycode key,int isShift) {
 
 static void DEBUGHandleTextEvent(const char *text) {
 	// TODO: Ignore UTF-8 characters > 0x7F
-	strcat_s(cmdLine, sizeof(cmdLine), text);
-	currentPosInLine += (int)strlen(text);
-	if (currentPosInLine > currentLineLen) {
-		currentLineLen = currentPosInLine;
+	int len = (int)strlen(text);
+	if (currentLineLen + len <= sizeof(cmdLine)) {
+		strcat(cmdLine, text);
+		currentPosInLine += len;
+		if (currentPosInLine > currentLineLen) {
+			currentLineLen = currentPosInLine;
+		}
 	}
 }
 
@@ -788,3 +759,36 @@ LUA TODO:
 	- I/O state
 	- timer
 */
+
+// *******************************************************************************************
+//
+//								Setup fonts and co
+//
+// *******************************************************************************************
+void
+DEBUGInitUI(SDL_Renderer *pRenderer)
+{
+	DEBUGInitChars(pRenderer);
+	dbgRenderer = pRenderer; // Save renderer.
+	luaState    = luaL_newstate();
+	if (!luaState) {
+		printf("Could not create lua state\n");
+		return;
+	}
+	luaL_openlibs(luaState);
+	lua_pushglobaltable(luaState);
+	luaL_setfuncs(luaState, DEBUGLuaFunctions, 0);
+	lua_pop(luaState, 1);
+}
+
+// *******************************************************************************************
+//
+//								Setup fonts and co
+//
+// *******************************************************************************************
+void
+DEBUGFreeUI()
+{
+	lua_close(luaState);
+	luaState = 0;
+}
